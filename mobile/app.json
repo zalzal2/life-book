@@ -1,0 +1,13 @@
+{
+    "expo": {
+        "name": "Life Book",
+        "slug": "life-book",
+        "scheme": "lifebook",
+        "android": {
+            "package": "com.lifebook.app"
+        },
+        "splash": {
+            "backgroundColor": "#FFFFFF"
+        }
+    }
+}

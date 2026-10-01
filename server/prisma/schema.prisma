@@ -1,0 +1,177 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum AuthProvider {
+  LOCAL
+  KAKAO
+  NAVER
+}
+
+model User {
+  id               String       @id @default(cuid())
+  email            String?      @unique
+  password         String?
+  nickname         String
+  friendCode       String       @unique @db.VarChar(8)
+  profileImage     String?
+  experiencePoints Int          @default(0)
+
+  authProvider     AuthProvider @default(LOCAL)
+  providerId       String?
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  userExperiences    UserExperience[]
+  achievements       UserAchievement[]
+  createdExperiences Experience[]      @relation("CreatedExperiences")
+  sentFriendReqs     Friendship[]      @relation("Requester")
+  receivedFriendReqs Friendship[]      @relation("Addressee")
+  experienceReports ExperienceReport[] @relation("ExperienceReports")
+
+  @@unique([authProvider, providerId])
+  @@map("users")
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  code  String @unique
+  name  String
+  emoji String?
+
+  experiences Experience[]
+
+  @@map("categories")
+}
+
+enum ExperienceSource {
+  BASE
+  SEASON
+  USER
+}
+
+model Experience {
+  id            String           @id @default(cuid())
+  categoryId    Int
+  category      Category         @relation(fields: [categoryId], references: [id])
+  name          String
+  description   String?          @db.Text
+  difficulty    Int
+  rarity        Int
+  estimatedTime String?
+  cost          String?
+  companion     String?
+  scope         String?
+  source        ExperienceSource @default(BASE)
+  seasonTag     String?
+  createdById   String?
+  createdBy   User? @relation("CreatedExperiences", fields: [createdById], references: [id], onDelete: SetNull)
+  isPublic      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+
+  userExperiences UserExperience[]
+  reports ExperienceReport[]
+
+  @@index([categoryId])
+  @@index([source])
+  @@map("experiences")
+}
+
+enum ExpStatus {
+  INTERESTED
+  COMPLETED
+}
+
+model UserExperience {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id])
+  status       ExpStatus  @default(INTERESTED)
+  earnedExp    Int?
+  completedAt  DateTime?
+  rating       Int?
+  memo         String?    @db.Text
+  photos       Photo[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([userId, experienceId])
+  @@map("user_experiences")
+}
+
+model Photo {
+  id               String         @id @default(cuid())
+  userExperienceId String
+  userExperience   UserExperience @relation(fields: [userExperienceId], references: [id])
+  url              String
+  createdAt        DateTime       @default(now())
+
+  @@map("photos")
+}
+
+model Achievement {
+  id          String @id @default(cuid())
+  code        String @unique
+  name        String
+  description String
+  condition   Json
+
+  users UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+}
+
+model Friendship {
+  id          String       @id @default(cuid())
+  requesterId String
+  requester   User         @relation("Requester", fields: [requesterId], references: [id])
+  addresseeId String
+  addressee   User         @relation("Addressee", fields: [addresseeId], references: [id])
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  @@unique([requesterId, addresseeId])
+  @@map("friendships")
+}
+
+model ExperienceReport {
+  id           String     @id @default(cuid())
+
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id])
+
+  reporterId   String
+  reporter     User       @relation("ExperienceReports", fields: [reporterId], references: [id])
+
+  reason       String
+  createdAt    DateTime   @default(now())
+
+  @@unique([experienceId, reporterId])
+  @@index([experienceId])
+  @@map("experience_reports")
+}
